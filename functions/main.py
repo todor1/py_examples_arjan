@@ -2,43 +2,35 @@
 import statistics
 from dataclasses import dataclass
 from typing import Callable, Protocol
+from functools import partial
 
 from exchange import Exchange
 
 # # ------------------------------------------------------------------------------
-### Functional implementation with Partial functions ! 60% of the video.... follow
+### Functional implementation with Partial functions 
 # # ------------------------------------------------------------------------------
 TradingStrategyFunction = Callable[[list[int]], bool]
 
-def should_buy_avg_closure(window_size: int) -> TradingStrategyFunction:
-    def should_buy_avg(prices: list[int]) -> bool:
-        list_window = prices[-window_size:]
-        return prices[-1] < statistics.mean(list_window)
-    return should_buy_avg
+def should_buy_avg(prices: list[int], window_size: int) -> bool:
+    list_window = prices[-window_size:]
+    return prices[-1] < statistics.mean(list_window)
 
+def should_sell_avg(prices: list[int], window_size: int) -> bool:
+    list_window = prices[-window_size:]
+    return prices[-1] > statistics.mean(list_window)
 
-def should_sell_avg_closure(window_size: int) -> TradingStrategyFunction:
-    def should_sell_avg(prices: list[int]) -> bool:
-        list_window = prices[-window_size:]
-        return prices[-1] > statistics.mean(list_window)
-    return should_sell_avg
+def should_buy_minmax(prices: list[int], max_price: float) -> bool:            
+    return prices[-1] < max_price
 
-
-def should_buy_minmax_closure(max_price: float) -> TradingStrategyFunction:
-    def should_buy_minmax(prices: list[int]) -> bool:            
-        return prices[-1] < max_price
-    return should_buy_minmax
-
-
-def should_sell_minmax_closure(max_price: float) -> TradingStrategyFunction:
-    def should_sell_minmax(prices: list[int]) -> bool:        
-        return prices[-1] > max_price
-    return should_sell_minmax
+def should_sell_minmax(prices: list[int], min_price: float) -> bool:        
+    return prices[-1] > min_price
 
 
 @dataclass
 class TradingBot:
-    """Trading bot that connects to exchange and performs trades""" 
+    """Trading bot that connects to exchange and performs trades
+        Create partially applied versions of the trading functions
+    """ 
     exchange: Exchange
     buy_strategy: TradingStrategyFunction
     sell_strategy: TradingStrategyFunction
@@ -60,9 +52,10 @@ def main() -> None:
     exchange = Exchange()
     exchange.connect()    
     # create the trading bot and run the bot once
-    # bot = TradingBot(exchange, should_buy_avg_closure(window_size=4), should_sell_minmax_closure(max_price=30_000_45))
-    # bot = TradingBot(exchange, should_buy_avg_closure(window_size=1), should_sell_minmax_closure(max_price=35_000_45))
-    bot = TradingBot(exchange, should_buy_avg_closure(window_size=6), should_sell_avg_closure(window_size=7))
+    # Create partially applied versions of the trading functions
+    buy_strategy = partial(should_buy_avg, window_size=4)
+    sell_strategy = partial(should_sell_minmax, min_price=32_000_00)
+    bot = TradingBot(exchange, buy_strategy, sell_strategy)
     bot.run("BTC/USD")
     
 
